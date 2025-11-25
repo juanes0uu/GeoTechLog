@@ -1,0 +1,198 @@
+/* --- Fondo principal --- */
+.login-background {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse at bottom, #0a192f, #000);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Inter", sans-serif;
+}
+
+/* --- Planeta Tierra girando --- */
+.earth-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 0;
+}
+
+.earth {
+  width: 950px;
+  height: 950px;
+  background: url("/earth.png") no-repeat center/cover;
+  border-radius: 50%;
+  opacity: 0.18;
+  filter: blur(2px) brightness(1.1);
+  animation: rotateEarth 120s linear infinite;
+}
+
+.earth-glow {
+  position: absolute;
+  width: 1000px;
+  height: 1000px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(0, 153, 255, 0.2), transparent 70%);
+  filter: blur(60px);
+  animation: pulseGlow 6s ease-in-out infinite;
+}
+
+@keyframes rotateEarth {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+/* --- Contenedor del login --- */
+.login-container {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(18px) saturate(180%);
+  padding: 3rem 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  width: 380px;
+  text-align: center;
+  animation: fadeInUp 1s ease forwards;
+}
+
+/* --- Animaciones --- */
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Títulos --- */
+.login-title {
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+
+.highlight {
+  color: #00aaff;
+}
+
+.login-subtitle {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1.8rem;
+}
+
+/* --- Inputs --- */
+.input-group {
+  margin-bottom: 1.2rem;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.input-group input:focus {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
+  border-color: rgba(0, 170, 255, 0.6);
+}
+
+/* --- Botón --- */
+.login-container button {
+  width: 100%;
+  background: linear-gradient(135deg, #007bff, #00aaff);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.login-container button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(0, 162, 255, 0.6);
+}
+
+/* --- Footer --- */
+.footer-text {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+
+/* --- Sección inferior (registro) --- */
+.register-section {
+  margin-top: 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.register-section p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* --- Botones --- */
+.primary-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #007bff, #00aaff);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(0, 162, 255, 0.6);
+}
+
+/* Botón secundario — para registrarse */
+.secondary-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #00aaff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.secondary-btn:hover {
+  background: rgba(0, 170, 255, 0.15);
+  box-shadow: 0 0 14px rgba(0, 162, 255, 0.4);
+  color: #fff;
+}
