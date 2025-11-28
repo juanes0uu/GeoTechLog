@@ -27,5 +27,5 @@ app.use(async (ctx, next) => {
 app.use(authRouter.routes());
 app.use(authRouter.allowedMethods());
 
-console.log("Servidor escuchando en http://localhost:8000");
-await app.listen({ port: 8000 });
+console.log("Servidor escuchando en http://localhost:8080");
+await app.listen({ port: 8080 });
