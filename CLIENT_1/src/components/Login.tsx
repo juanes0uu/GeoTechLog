@@ -20,14 +20,13 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/login", {
+      const response = await fetch("http://localhost:8080/usuarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           Email: formData.Email,
           Password: formData.Password
         }),
-
       });
 
       const data = await response.json();
