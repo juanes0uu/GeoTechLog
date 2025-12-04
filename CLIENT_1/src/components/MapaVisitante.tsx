@@ -151,64 +151,67 @@ export default function MapaVisitante() {
   // =============================
   // Cargar ruta desde BD
   // =============================
-  const cargarRuta = async () => {
-    try {
-      const rutas = await api.getRutas();
-      if (!Array.isArray(rutas) || rutas.length === 0)
-        return alert("No hay rutas guardadas.");
+  // =============================
+// Cargar ruta desde BD
+// =============================
+const cargarRuta = async () => {
+  try {
+    const rutas = await api.getRutas();
+    if (!Array.isArray(rutas) || rutas.length === 0)
+      return alert("No hay rutas guardadas.");
 
-      const lista = rutas.map((r: any) => `${r.IdRuta}: ${r.Nombre}`).join("\n");
-      const input = prompt(`Selecciona el ID de la ruta:\n${lista}`);
+    const lista = rutas.map((r: any) => `${r.IdRuta}: ${r.Nombre}`).join("\n");
+    const input = prompt(`Selecciona el ID de la ruta:\n${lista}`);
 
-      const id = Number(input);
-      if (!id || isNaN(id)) return;
+    const id = Number(input);
+    if (!id || isNaN(id)) return;
 
-      const detalle = await api.getRutaDetalle(id);
-      if (!Array.isArray(detalle) || detalle.length === 0)
-        return alert("Esta ruta no tiene puntos guardados.");
+    const detalle = await api.getRutaDetalle(id);
+    if (!Array.isArray(detalle) || detalle.length === 0)
+      return alert("Esta ruta no tiene puntos guardados.");
 
-      setRutaCargada(coords);
-      // Guardar ID y puntos para controles y otras acciones
-      setRutaGuardadaId(id);
-      setPuntos(coords);
+    // Convertir puntos a coords
+    const coords: [number, number][] = detalle.map((p: any) => [
+      parseFloat(p.Latitud),
+      parseFloat(p.Longitud),
+    ]);
 
-      // Dibujar la ruta cargada
-      const map = mapRef.current;
-      if (!map) return;
-      setRutaCargada(coords);
+    setRutaCargada(coords);
+    setRutaGuardadaId(id);
+    setPuntos(coords);
 
-      // Dibujar la ruta cargada
-      const map = mapRef.current;
-      if (!map) return;
+    const map = mapRef.current;
+    if (!map) return;
 
-      if (polylineRef.current) {
-        map.removeLayer(polylineRef.current);
-      }
-
-      polylineRef.current = L.polyline(coords, { color: "blue" }).addTo(map);
-      map.fitBounds(polylineRef.current.getBounds());
-
-      alert(`Ruta cargada correctamente.`);
-
-    } catch (err) {
-  const limpiarRuta = () => {
-    setRutaCargada([]);
-    setRutaGuardadaId(null);
-    setPuntos([]);
-
-    if (polylineRef.current && mapRef.current) {
-      mapRef.current.removeLayer(polylineRef.current);
-      polylineRef.current = null;
+    if (polylineRef.current) {
+      map.removeLayer(polylineRef.current);
     }
-  };
-  const limpiarRuta = () => {
-    setRutaCargada([]);
 
-    if (polylineRef.current && mapRef.current) {
-      mapRef.current.removeLayer(polylineRef.current);
-      polylineRef.current = null;
-    }
-  };
+    polylineRef.current = L.polyline(coords, { color: "blue" }).addTo(map);
+    map.fitBounds(polylineRef.current.getBounds());
+
+    alert(`Ruta cargada correctamente.`);
+  } catch (err) {
+    console.error("Error cargando ruta:", err);
+    alert("Error cargando ruta.");
+  }
+};
+
+// =============================
+// Limpiar ruta
+// =============================
+const limpiarRuta = () => {
+  setRutaCargada([]);
+  setRutaGuardadaId(null);
+  setPuntos([]);
+
+  if (polylineRef.current && mapRef.current) {
+    mapRef.current.removeLayer(polylineRef.current);
+    polylineRef.current = null;
+  }
+};
+
+
 
   // =============================
   // Simular ruta cargada

@@ -42,7 +42,8 @@ const Login: React.FC = () => {
         if (user.rol === 1) {
           navigate("/dashboard");
         } else {
-          navigate("./MapaVisitante.tsx");
+          navigate("/visitante");
+
         }
 
 
