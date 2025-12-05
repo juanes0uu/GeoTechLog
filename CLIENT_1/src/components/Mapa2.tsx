@@ -33,7 +33,9 @@ const lugarIcon = L.divIcon({
 });
 
 // 👤 Usuario simulado
-const USUARIO_SIMULADO_ID = 1;
+const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+const ID_USUARIO = usuario.IdUsuario || usuario.id || usuario.ID || null;
+
 
 export default function Mapa2() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -123,7 +125,7 @@ export default function Mapa2() {
 
         try {
           const nuevoLugar = await api.postLugar({
-            IdUsuario: USUARIO_SIMULADO_ID,
+            IdUsuario: ID_USUARIO,
             Nombre: nombre,
             Descripcion: descripcion,
             Latitud: lat,
@@ -207,7 +209,7 @@ export default function Mapa2() {
 
         try {
           await api.postUbicacion({
-            IdUsuario: USUARIO_SIMULADO_ID,
+            IdUsuario: ID_USUARIO,
             Latitud: latitude,
             Longitud: longitude,
           });
@@ -229,7 +231,7 @@ export default function Mapa2() {
     try {
       const nombre = `Ruta - ${new Date().toLocaleString()}`;
       const resRuta = await api.postRuta({
-        IdUsuario: USUARIO_SIMULADO_ID,
+        IdUsuario: ID_USUARIO,
         Nombre: nombre,
       });
 
@@ -348,7 +350,7 @@ export default function Mapa2() {
 
       try {
         await api.postUbicacion({
-          IdUsuario: USUARIO_SIMULADO_ID,
+          IdUsuario: ID_USUARIO,
           Latitud: lat,
           Longitud: lon,
         });
