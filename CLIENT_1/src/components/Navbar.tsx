@@ -23,6 +23,8 @@
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
 
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "null");
+
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) =>
       setAnchorEl(event.currentTarget);
     const handleMenuClose = () => setAnchorEl(null);
@@ -38,9 +40,19 @@
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
-            <Typography sx={{ cursor: "pointer" }} onClick={() => navigate("/dashboard")}>
+            <Typography
+              sx={{ cursor: "pointer" }}
+              onClick={() => {
+                if (usuario?.rol === 1) {
+                  navigate("/dashboard");     // Admin
+                } else {
+                  navigate("/visitante");     // Visitante
+                }
+              }}
+            >
               Explorar
             </Typography>
+
             <Typography sx={{ cursor: "pointer" }} onClick={() => navigate("/info")}>
               Info
             </Typography>
