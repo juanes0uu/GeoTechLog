@@ -354,6 +354,8 @@ export default function MapaVisitante() {
   );
 };
 
+//d = √((lat_user – lat_ruta)² + (lng_user – lng_ruta)²)
+
 
   // --------------------------------------------------------------------
   return (
