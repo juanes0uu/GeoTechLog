@@ -34,8 +34,12 @@ export default function MapaVisitante() {
 
   const [puntos, setPuntos] = useState<[number, number][]>([]);
   const [lugares, setLugares] = useState<any[]>([]);
+  const [recorridoActivo, setRecorridoActivo] = useState(false);
+  const [rutaActual, setRutaActual] = useState<[number, number][]>([]);
+  const [mensaje, setMensaje] = useState("");
 
   const wsRef = useRef<WebSocket | null>(null);
+  const markerUsuarioRef = useRef<L.Marker | null>(null);
 
   // --------------------------------------------------------------------
   // 🗺 Inicializar Mapa
@@ -77,36 +81,53 @@ export default function MapaVisitante() {
       if (data.type === "update" && data.position) {
         const { lat, lng } = data.position;
 
+        // actualizar puntos para polyline
         setPuntos((prev) => [...prev, [lat, lng]]);
+
+        // actualizar marker del usuario
+        const map = mapRef.current;
+        if (!map) return;
+
+        if (markerUsuarioRef.current) {
+          markerUsuarioRef.current.setLatLng([lat, lng]);
+        } else {
+          markerUsuarioRef.current = L.marker([lat, lng]).addTo(map);
+        }
+
+        map.setView([lat, lng], 17);
+
+        // ⚠️ Verificar si está fuera de la ruta
+        if (recorridoActivo && !estaEnRuta(lat, lng)) {
+          setMensaje("⚠️ Estás fuera de la ruta!");
+        } else {
+          setMensaje("");
+        }
       }
     };
 
     ws.onclose = () => console.log("WS desconectado (visitante)");
 
     return () => ws.close();
-  }, []);
+  }, [recorridoActivo, rutaActual]);
 
   // --------------------------------------------------------------------
   // ✏️ Dibujar ruta en tiempo real
   // --------------------------------------------------------------------
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !rutaActual) return;
 
     if (polylineRef.current) {
-      // actualizar polyline
-      polylineRef.current.setLatLngs(puntos);
+      polylineRef.current.setLatLngs(rutaActual);
     } else {
-      // crear polyline
-      polylineRef.current = L.polyline(puntos, { color: "blue" }).addTo(map);
+      polylineRef.current = L.polyline(rutaActual, { color: "blue" }).addTo(map);
     }
 
-    // mover mapa al último punto
-    if (puntos.length > 0) {
-      const last = puntos[puntos.length - 1];
-      map.setView(last, 17);
+    if (rutaActual.length > 0) {
+      map.fitBounds(polylineRef.current.getBounds());
     }
-  }, [puntos]);
+  }, [rutaActual]);
+
 
   // --------------------------------------------------------------------
   // 📌 Cargar lugares de la BD
@@ -128,10 +149,7 @@ export default function MapaVisitante() {
 
       data.forEach((lugar: any) => {
         L.marker(
-          [
-            parseFloat(lugar.Latitud),
-            parseFloat(lugar.Longitud),
-          ],
+          [parseFloat(lugar.Latitud), parseFloat(lugar.Longitud)],
           { icon: lugarIcon }
         )
           .addTo(lugaresLayerRef.current!)
@@ -143,7 +161,7 @@ export default function MapaVisitante() {
   };
 
   // --------------------------------------------------------------------
-  // 📂 Cargar una ruta guardada en la BD
+  // 📂 Cargar ruta guardada
   // --------------------------------------------------------------------
   const cargarRuta = async () => {
     try {
@@ -151,36 +169,52 @@ export default function MapaVisitante() {
       if (!Array.isArray(rutas) || rutas.length === 0)
         return alert("No hay rutas disponibles.");
 
-      const lista = rutas
-        .map((r: any) => `${r.IdRuta}: ${r.Nombre}`)
-        .join("\n");
-
+      const lista = rutas.map((r: any) => `${r.IdRuta}: ${r.Nombre}`).join("\n");
       const input = prompt(`Selecciona ID de ruta:\n${lista}`);
       const id = Number(input);
-
       if (!id || isNaN(id)) return;
 
       const detalle = await api.getRutaDetalle(id);
-
       if (!Array.isArray(detalle) || detalle.length === 0)
         return alert("Esta ruta no tiene puntos.");
 
       const coords = detalle.map((p: any) => [
         parseFloat(p.Latitud),
         parseFloat(p.Longitud),
-      ]);
+      ]) as [number, number][];
 
       setPuntos(coords);
+
+      // Dibujar polilínea directamente
+      const map = mapRef.current;
+      if (!map) return;
+
+      // Eliminar polilínea anterior
+      if (polylineRef.current) {
+        map.removeLayer(polylineRef.current);
+      }
+
+      // Crear nueva polilínea
+      polylineRef.current = L.polyline(coords, { color: "blue" }).addTo(map);
+
+      // Centrar mapa en primer punto
+      if (coords.length > 0) {
+        map.fitBounds(polylineRef.current.getBounds());
+      }
+
     } catch (err) {
       console.error("Error cargando ruta:", err);
     }
   };
 
+
   // --------------------------------------------------------------------
-  // 🧹 Limpiar ruta del mapa
+  // 🧹 Limpiar ruta
   // --------------------------------------------------------------------
   const limpiar = () => {
     setPuntos([]);
+    setRutaActual([]);
+    setRecorridoActivo(false);
 
     if (polylineRef.current && mapRef.current) {
       mapRef.current.removeLayer(polylineRef.current);
@@ -189,16 +223,160 @@ export default function MapaVisitante() {
   };
 
   // --------------------------------------------------------------------
+  // 🆕 Enviar ubicación RANDOM
+  // --------------------------------------------------------------------
+  // Enviar RANDOM
+   const indiceRef = useRef(0); // índice del punto actual en la ruta
+
+    const enviarRandom = () => {
+      if (!rutaActual || rutaActual.length === 0 || !wsRef.current) return;
+
+      // Tomamos el punto actual
+      const index = indiceRef.current;
+      const [latBase, lngBase] = rutaActual[index];
+
+      // Desviación pequeña aleatoria
+      const desviacionLat = (Math.random() - 0.5) * 0.00005; // ±5m
+      const desviacionLng = (Math.random() - 0.5) * 0.00005;
+
+      const lat = latBase + desviacionLat;
+      const lng = lngBase + desviacionLng;
+
+      // Enviar al WS
+      wsRef.current.send(
+        JSON.stringify({ type: "location", userId: "visitante", position: { lat, lng } })
+      );
+
+      // Actualizar marker
+      const map = mapRef.current;
+      if (!map) return;
+
+      if (markerUsuarioRef.current) {
+        markerUsuarioRef.current.setLatLng([lat, lng]);
+      } else {
+        markerUsuarioRef.current = L.marker([lat, lng]).addTo(map);
+      }
+
+      map.setView([lat, lng], 17);
+
+      // Guardar en puntos para la polilínea
+      setPuntos((prev) => [...prev, [lat, lng]]);
+
+      // Avanzar al siguiente índice
+      indiceRef.current = (index + 1) % rutaActual.length; // vuelve al inicio si llega al final
+    };
+
+
+
+
+    
+
+
+
+  // --------------------------------------------------------------------
+  // 🆕 Enviar ubicación REAL
+  // --------------------------------------------------------------------
+  const enviarUbicacionReal = () => {
+    if (!navigator.geolocation) {
+      return alert("Tu navegador no soporta geolocalización.");
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        const map = mapRef.current;
+        if (!map) return;
+
+        wsRef.current?.send(JSON.stringify({ type: "location", userId: "visitante", position: { lat, lng } }));
+
+        if (markerUsuarioRef.current) {
+          markerUsuarioRef.current.setLatLng([lat, lng]);
+        } else {
+          markerUsuarioRef.current = L.marker([lat, lng]).addTo(map);
+        }
+
+        map.setView([lat, lng], 17);
+      },
+      (err) => console.error("Error obteniendo ubicación:", err),
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // --------------------------------------------------------------------
+  // 🔹 Funciones de recorrido
+  // --------------------------------------------------------------------
+  const iniciarRecorrido = async () => {
+    try {
+      const rutas = await api.getRutas();
+      if (!Array.isArray(rutas) || rutas.length === 0) return alert("No hay rutas.");
+
+      const lista = rutas.map((r: any) => `${r.IdRuta}: ${r.Nombre}`).join("\n");
+      const input = prompt(`Elige ID de ruta:\n${lista}`);
+      const id = Number(input);
+      if (!id || isNaN(id)) return;
+
+      const detalle = await api.getRutaDetalle(id);
+      if (!Array.isArray(detalle) || detalle.length === 0) return alert("Ruta sin puntos.");
+
+      const coords = detalle.map((p: any) => [parseFloat(p.Latitud), parseFloat(p.Longitud)]) as [number, number][];
+      setRutaActual(coords);
+      setPuntos(coords);
+      setRecorridoActivo(true);
+
+      // 🟢 Dibujar polilínea inmediatamente
+      const map = mapRef.current;
+      if (!map) return;
+
+      // Eliminar polilínea anterior
+      if (polylineRef.current) map.removeLayer(polylineRef.current);
+
+      // Crear nueva polilínea
+      polylineRef.current = L.polyline(coords, { color: "blue" }).addTo(map);
+
+      // Centrar y ajustar mapa
+      if (coords.length > 0) map.fitBounds(polylineRef.current.getBounds());
+
+      await cargarLugares();
+      alert("🏁 Recorrido iniciado! Ahora puedes moverte por la ruta.");
+    } catch (err) {
+      console.error("Error iniciando recorrido:", err);
+    }
+  };
+
+  const estaEnRuta = (lat: number, lng: number) => {
+  if (!rutaActual || rutaActual.length === 0) return true;
+
+  const umbral = 0.000017; // ~3 metros
+  return rutaActual.some(([rLat, rLng]) =>
+    Math.sqrt((lat - rLat) ** 2 + (lng - rLng) ** 2) <= umbral
+  );
+};
+
+
+  // --------------------------------------------------------------------
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      {mensaje && (
+        <div style={{
+          position: "absolute",
+          top: 16,
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: "rgba(255,0,0,0.8)",
+          color: "#fff",
+          padding: "6px 12px",
+          borderRadius: 6,
+          zIndex: 1000,
+        }}>
+          {mensaje}
+        </div>
+      )}
+
       <div
         ref={mapContainerRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          borderRadius: "8px",
-          overflow: "hidden",
-        }}
+        style={{ width: "100%", height: "100%", borderRadius: "8px", overflow: "hidden" }}
       ></div>
 
       <FooterVisitante
@@ -206,6 +384,9 @@ export default function MapaVisitante() {
         onCargarLugares={cargarLugares}
         onSimular={() => {}}
         onLimpiar={limpiar}
+        onEnviarUbicacionReal={enviarUbicacionReal}
+        onEnviarRandom={enviarRandom}
+        onIniciarRecorrido={iniciarRecorrido}
         puntos={puntos}
       />
     </div>
