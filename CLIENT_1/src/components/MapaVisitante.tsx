@@ -394,7 +394,3 @@ export default function MapaVisitante() {
     </div>
   );
 }
-
-  }
-
-}
