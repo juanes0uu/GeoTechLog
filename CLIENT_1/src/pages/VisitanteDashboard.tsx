@@ -1,42 +1,49 @@
 import React from "react";
-import { Box, Typography, Button } from "@mui/material";
-import Mapa from "../components/Mapa2";
-import FooterControles from "../components/FooterControles";
+import { Drawer } from "@mui/material";
+import Mapa from "../components/MapaVisitante";
 import LeftSidebar from "../components/LeftSidebar";
 
-export default function VisitanteDashboard() {
+interface DashboardProps {
+  sidebarOpen: boolean;
+  onSidebarClose: () => void;
+}
+
+export default function Dashboard({ sidebarOpen, onSidebarClose }: DashboardProps) {
   return (
-    <Box sx={{ display: "flex", height: "calc(100vh - 64px)" }}>
-      {/* Sidebar izquierda */}
-      <LeftSidebar modo="visitante" />
+    <div
+      style={{
+        height: "calc(100vh - 64px)", // 🔹 Resta la altura del Navbar global (64px aprox)
+        overflow: "hidden", // 🔹 Evita scroll innecesario
+        position: "relative",
+      }}
+    >
+      {/* 🗺️ Mapa ocupa todo el espacio disponible */}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "relative",
+        }}
+      >
+        <Mapa />
+      </div>
 
-      {/* Contenido principal */}
-      <Box sx={{ flex: 1, position: "relative" }}>
-        <Mapa modo="visitante" />
-
-        {/* Panel informativo flotante */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: 20,
-            left: 20,
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
-            padding: 2,
-            borderRadius: 2,
-            boxShadow: 3,
-          }}
-        >
-          <Typography variant="h6">Bienvenido al Mapa Interactivo</Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Aquí puedes explorar rutas y puntos de interés de la Ciudadela Industrial.
-          </Typography>
-          <Button variant="contained" color="success">
-            Ver rutas disponibles
-          </Button>
-        </Box>
-
-        <FooterControles modo="visitante" />
-      </Box>
-    </Box>
+      {/* 📋 Drawer lateral */}
+      <Drawer
+        anchor="left"
+        open={sidebarOpen}
+        onClose={onSidebarClose}
+        PaperProps={{
+          sx: {
+            width: 300,
+            backgroundColor: "#f9fafb",
+            color: "#111827",
+            padding: 3,
+          },
+        }}
+      >
+        <LeftSidebar onClose={onSidebarClose} />
+      </Drawer>
+    </div>
   );
 }

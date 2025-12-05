@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Login.css";
+import Swal from "sweetalert2";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -18,14 +18,21 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+Swal.fire({
+  title: "Conectando...",
+  html: "Estamos validando tus datos",
+  allowOutsideClick: false,
+  didOpen: () => {
+    Swal.showLoading();
+  }
+});
     try {
       const response = await fetch("http://localhost:8080/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           Email: formData.Email,
-          Password: formData.Password
+          Password: formData.Password,
         }),
       });
 
@@ -33,7 +40,12 @@ const Login: React.FC = () => {
 
       if (response.ok) {
         const user = data.user;
-        alert(`Bienvenido ${user.nombre}`);
+       Swal.fire({
+        icon: "success",
+        title: `Bienvenido ${user.nombre}`,
+        showConfirmButton: false,
+        timer: 1800
+      });
 
         localStorage.setItem("usuario", JSON.stringify(user));
         localStorage.setItem("token", data.token);
@@ -42,15 +54,16 @@ const Login: React.FC = () => {
         if (user.rol === 1) {
           navigate("/dashboard");
         } else {
-          navigate("./MapaVisitante.tsx");
+          navigate("/visitante");
         }
-
-
-
       } else {
-        alert(data.error || "Credenciales inválidas");
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: data.error || "Credenciales inválidas",
+          confirmButtonColor: "#3085d6",
+        });
       }
-
     } catch (error) {
       console.error(error);
       alert("Error de conexión con el servidor.");
@@ -110,7 +123,9 @@ const Login: React.FC = () => {
           </button>
         </div>
 
-        <p className="footer-text">© 2025 GeoTech. Todos los derechos reservados.</p>
+        <p className="footer-text">
+          © 2025 GeoTech. Todos los derechos reservados.
+        </p>
       </div>
     </div>
   );

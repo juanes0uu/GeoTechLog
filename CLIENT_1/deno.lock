@@ -11,7 +11,11 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@emotion/react@^11.14.0",
+        "npm:@emotion/styled@^11.14.1",
         "npm:@eslint/js@^9.36.0",
+        "npm:@mui/icons-material@^7.3.6",
+        "npm:@mui/material@^7.3.6",
         "npm:@types/leaflet@^1.9.20",
         "npm:@types/node@^24.7.0",
         "npm:@types/react-dom@^19.2.0",
@@ -29,6 +33,7 @@
         "npm:react-router-dom@^6.26.2",
         "npm:react@^19.2.0",
         "npm:rolldown-vite@7.1.14",
+        "npm:sweetalert2@^11.26.3",
         "npm:typescript-eslint@^8.45.0",
         "npm:typescript@~5.9.3"
       ]
