@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
 import Login from "./components/Login";
 import RegisterPage from "./components/Register";
+import SeguimientoAdmin from "./pages/SeguimientoAdmin";
 
 import Dashboard from "./pages/Dashboard";
 import Perfil from "./pages/Perfil";
@@ -48,6 +49,8 @@ function AppContent() {
         <Route path="/contacto" element={<Contacto />} />
         <Route path="/configuracion" element={<Configuracion />} />
         <Route path="/visitante" element={<VisitanteDashboard />} />
+        <Route path="/seguimiento" element={<SeguimientoAdmin />} />
+
       </Routes>
     </>
   );

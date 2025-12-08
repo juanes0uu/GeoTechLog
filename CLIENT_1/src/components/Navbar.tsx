@@ -59,6 +59,16 @@
             <Typography sx={{ cursor: "pointer" }} onClick={() => navigate("/contacto")}>
               Contacto
             </Typography>
+                  {usuario?.rol === 1 && (
+              <Typography
+                sx={{ cursor: "pointer" }}
+                onClick={() => navigate("/seguimiento")}
+              >
+                Seguimiento
+              </Typography>
+            )}
+
+
 
             <IconButton onClick={handleMenuOpen}>
               <Avatar alt="Perfil" src="/avatar.png">
