@@ -16,6 +16,8 @@ import {
   Alert,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+import { API_BASE } from "../services/config";
+
 
 interface Usuario {
   IdUsuario: number;
@@ -49,7 +51,7 @@ export default function Perfil() {
     }
 
     // Usa el ID del usuario real
-    fetch(`http://localhost:8080/usuarios/${userStorage.id}`)
+    fetch(`${API_BASE}/usuarios/${userStorage.id}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -81,7 +83,7 @@ export default function Perfil() {
     if (!usuario) return;
 
     try {
-      const res = await fetch(`http://localhost:8080/usuarios/${usuario.IdUsuario}`, {
+      const res = await fetch(`${API_BASE}/usuarios/${usuario.IdUsuario}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editData),

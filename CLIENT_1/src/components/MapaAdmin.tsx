@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { WS_URL } from "../services/ws";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -39,7 +40,7 @@ export default function MapaAdmin() {
 
     /* 🔌 WebSocket ADMIN */
     useEffect(() => {
-        const ws = new WebSocket("ws://localhost:8080/ws");
+        const ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
         console.log("🧑‍💼 Admin conectado al WS");

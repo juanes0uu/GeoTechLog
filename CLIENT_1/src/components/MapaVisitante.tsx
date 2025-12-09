@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../services/apiMapa";
-
+import { WS_URL } from "../services/ws";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -64,51 +64,34 @@ export default function MapaVisitante() {
   // 🔌 Conectar WebSocket y recibir ubicaciones EN TIEMPO REAL
   // --------------------------------------------------------------------
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8080/ws");
+    const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
 
-    ws.onopen = () => console.log("Visitante conectado al WS ✔");
+    ws.onopen = () => {
+      console.log("✅ Visitante conectado al WS");
 
-    ws.onmessage = (event) => {
-      let data;
-      try {
-        data = JSON.parse(event.data);
-      } catch {
-        console.warn("Mensaje WS inválido");
-        return;
-      }
-
-      if (data.type === "update" && data.position) {
-        const { lat, lng } = data.position;
-
-        // actualizar puntos para polyline
-        setPuntos((prev) => [...prev, [lat, lng]]);
-
-        // actualizar marker del usuario
-        const map = mapRef.current;
-        if (!map) return;
-
-        if (markerUsuarioRef.current) {
-          markerUsuarioRef.current.setLatLng([lat, lng]);
-        } else {
-          markerUsuarioRef.current = L.marker([lat, lng]).addTo(map);
-        }
-
-        map.setView([lat, lng], 17);
-
-        // ⚠️ Verificar si está fuera de la ruta
-        if (recorridoActivo && !estaEnRuta(lat, lng)) {
-          setMensaje("⚠️ Estás fuera de la ruta!");
-        } else {
-          setMensaje("");
-        }
-      }
+      // 🔐 REGISTRO OBLIGATORIO
+      ws.send(
+        JSON.stringify({
+          type: "register",
+          role: "visitante",
+          userId: "visitante-1", // puede ser dinámico después
+        })
+      );
     };
 
-    ws.onclose = () => console.log("WS desconectado (visitante)");
+    ws.onerror = (err) => {
+      console.log("❌ WS visitante error", err);
+    };
 
-    return () => ws.close();
-  }, [recorridoActivo, rutaActual]);
+    ws.onclose = () => {
+      console.log("🔴 WS desconectado (visitante)");
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []); // ✅ SIN DEPENDENCIAS
 
   // --------------------------------------------------------------------
   // ✏️ Dibujar ruta en tiempo real
@@ -225,46 +208,62 @@ export default function MapaVisitante() {
   // --------------------------------------------------------------------
   // 🆕 Enviar ubicación RANDOM
   // --------------------------------------------------------------------
-  // Enviar RANDOM
-   const indiceRef = useRef(0); // índice del punto actual en la ruta
+// --------------------------------------------------------------------
+// 🆕 Enviar ubicación RANDOM
+// --------------------------------------------------------------------
+  const indiceRef = useRef(0); // índice del punto actual en la ruta
 
-    const enviarRandom = () => {
-      if (!rutaActual || rutaActual.length === 0 || !wsRef.current) return;
+  const enviarRandom = () => {
+    if (!rutaActual || rutaActual.length === 0 || !wsRef.current) return;
 
-      // Tomamos el punto actual
-      const index = indiceRef.current;
-      const [latBase, lngBase] = rutaActual[index];
+    // Tomamos el punto actual
+    const index = indiceRef.current;
+    const [latBase, lngBase] = rutaActual[index];
 
-      // Desviación pequeña aleatoria
-      const desviacionLat = (Math.random() - 0.5) * 0.00005; // ±5m
-      const desviacionLng = (Math.random() - 0.5) * 0.00005;
+    // Desviación pequeña aleatoria
+    const desviacionLat = (Math.random() - 0.5) * 0.00005; // ±5m
+    const desviacionLng = (Math.random() - 0.5) * 0.00005;
 
-      const lat = latBase + desviacionLat;
-      const lng = lngBase + desviacionLng;
+    const lat = latBase + desviacionLat;
+    const lng = lngBase + desviacionLng;
 
-      // Enviar al WS
+    // ✅ VALIDACIÓN LOCAL DE RUTA
+    if (recorridoActivo && !estaEnRuta(lat, lng)) {
+      setMensaje("⚠️ Estás fuera de la ruta!");
+    } else {
+      setMensaje("");
+    }
+
+    // Enviar al WS
+    if (wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
-        JSON.stringify({ type: "location", userId: "visitante", position: { lat, lng } })
+        JSON.stringify({
+          type: "location",
+          userId: "visitante",
+          position: { lat, lng },
+        })
       );
+    }
 
-      // Actualizar marker
-      const map = mapRef.current;
-      if (!map) return;
+    // Actualizar marker
+    const map = mapRef.current;
+    if (!map) return;
 
-      if (markerUsuarioRef.current) {
-        markerUsuarioRef.current.setLatLng([lat, lng]);
-      } else {
-        markerUsuarioRef.current = L.marker([lat, lng]).addTo(map);
-      }
+    if (markerUsuarioRef.current) {
+      markerUsuarioRef.current.setLatLng([lat, lng]);
+    } else {
+      markerUsuarioRef.current = L.marker([lat, lng]).addTo(map);
+    }
 
-      map.setView([lat, lng], 17);
+    map.setView([lat, lng], 17);
 
-      // Guardar en puntos para la polilínea
-      setPuntos((prev) => [...prev, [lat, lng]]);
+    // Guardar en puntos para la polilínea
+    setPuntos((prev) => [...prev, [lat, lng]]);
 
-      // Avanzar al siguiente índice
-      indiceRef.current = (index + 1) % rutaActual.length; // vuelve al inicio si llega al final
-    };
+    // Avanzar al siguiente índice
+    indiceRef.current = (index + 1) % rutaActual.length;
+  };
+
 
 
 
@@ -286,10 +285,23 @@ export default function MapaVisitante() {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
+        // ✅ VALIDACIÓN LOCAL DE RUTA
+        if (recorridoActivo && !estaEnRuta(lat, lng)) {
+          setMensaje("⚠️ Estás fuera de la ruta!");
+        } else {
+          setMensaje("");
+        }
+
         const map = mapRef.current;
         if (!map) return;
 
-        wsRef.current?.send(JSON.stringify({ type: "location", userId: "visitante", position: { lat, lng } }));
+        wsRef.current?.send(
+          JSON.stringify({
+            type: "location",
+            userId: "visitante",
+            position: { lat, lng },
+          })
+        );
 
         if (markerUsuarioRef.current) {
           markerUsuarioRef.current.setLatLng([lat, lng]);
