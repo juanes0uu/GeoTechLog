@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { API_BASE } from "../services/config";
-
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -29,7 +27,7 @@ Swal.fire({
   }
 });
     try {
-      const response = await fetch(`${API_BASE}/login`, {
+      const response = await fetch("http://localhost:8080/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

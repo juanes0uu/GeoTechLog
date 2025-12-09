@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { API_BASE } from "../services/config";
 import { useNavigate } from "react-router-dom";
 import "./Login.css"; // reutilizamos los estilos del login
 
@@ -25,7 +24,7 @@ const Register: React.FC = () => {
 
      try {
       
- const response = await fetch(`${API_BASE}/usuarios`, {
+ const response = await fetch("http://localhost:8080/usuarios", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({

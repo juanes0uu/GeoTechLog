@@ -1,5 +1,5 @@
 // client1/src/services/api.ts
-import { API_BASE } from "./config";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 type FetchOptions = RequestInit & { query?: Record<string,string|number> };
 

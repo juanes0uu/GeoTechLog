@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../services/apiMapa";
-import { WS_URL } from "../services/ws";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -63,8 +62,11 @@ export default function MapaVisitante() {
   // --------------------------------------------------------------------
   // 🔌 Conectar WebSocket y recibir ubicaciones EN TIEMPO REAL
   // --------------------------------------------------------------------
+  // --------------------------------------------------------------------
+  // 🔌 Conectar WebSocket y recibir ubicaciones EN TIEMPO REAL
+  // --------------------------------------------------------------------
   useEffect(() => {
-    const ws = new WebSocket(WS_URL);
+    const ws = new WebSocket("ws://localhost:8080/ws");
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -92,6 +94,24 @@ export default function MapaVisitante() {
       ws.close();
     };
   }, []); // ✅ SIN DEPENDENCIAS
+
+  // --------------------------------------------------------------------
+  // ✏️ Dibujar ruta en tiempo real
+  // --------------------------------------------------------------------
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !rutaActual) return;
+
+    if (polylineRef.current) {
+      polylineRef.current.setLatLngs(rutaActual);
+    } else {
+      polylineRef.current = L.polyline(rutaActual, { color: "blue" }).addTo(map);
+    }
+
+    if (rutaActual.length > 0) {
+      map.fitBounds(polylineRef.current.getBounds());
+    }
+  }, [rutaActual]);
 
   // --------------------------------------------------------------------
   // ✏️ Dibujar ruta en tiempo real

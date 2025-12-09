@@ -12,8 +12,6 @@ import {
   TextField,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { API_BASE } from "../services/config";
-
 
 export default function Configuracion() {
   const navigate = useNavigate();
@@ -24,7 +22,7 @@ export default function Configuracion() {
 
   // Cargar configuración actual del usuario
   useEffect(() => {
-    fetch(`${API_BASE}/usuarios/${usuarioId}`)
+    fetch(`http://localhost:8080/usuarios/${usuarioId}`)
       .then((res) => res.json())
       .then((data) => {
         setNotificaciones(data.notificaciones ?? true);
@@ -41,7 +39,7 @@ export default function Configuracion() {
       password: password || undefined,
     };
 
-    const res = await fetch(`${API_BASE}/usuarios/${usuarioId}`, {
+    const res = await fetch(`http://localhost:8080/usuarios/${usuarioId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
