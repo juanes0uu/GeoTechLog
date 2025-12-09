@@ -62,38 +62,49 @@ export default function MapaVisitante() {
   // --------------------------------------------------------------------
   // 🔌 Conectar WebSocket y recibir ubicaciones EN TIEMPO REAL
   // --------------------------------------------------------------------
-  // --------------------------------------------------------------------
   // 🔌 Conectar WebSocket y recibir ubicaciones EN TIEMPO REAL
-  // --------------------------------------------------------------------
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8080/ws");
-    wsRef.current = ws;
+      let ws: WebSocket | null = null;
+      let reconnectTimeout: number;
 
-    ws.onopen = () => {
-      console.log("✅ Visitante conectado al WS");
+      const connectWS = () => {
+          ws = new WebSocket("ws://localhost:8080/ws");
+          wsRef.current = ws;
 
-      // 🔐 REGISTRO OBLIGATORIO
-      ws.send(
-        JSON.stringify({
-          type: "register",
-          role: "visitante",
-          userId: "visitante-1", // puede ser dinámico después
-        })
-      );
-    };
+          ws.onopen = () => {
+              console.log("✅ Visitante conectado al WS");
+              if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                      type: "register",
+                      role: "visitante",
+                      userId: "visitante-1",
+                  }));
+              }
+          };
 
-    ws.onerror = (err) => {
-      console.log("❌ WS visitante error", err);
-    };
+          ws.onmessage = () => {
+              // Aquí puedes procesar mensajes del servidor si quieres
+          };
 
-    ws.onclose = () => {
-      console.log("🔴 WS desconectado (visitante)");
-    };
+          ws.onerror = () => {
+              // Evitamos mostrar error feo en consola
+          };
 
-    return () => {
-      ws.close();
-    };
-  }, []); // ✅ SIN DEPENDENCIAS
+          ws.onclose = () => {
+              console.log("⚠️ WS visitante desconectado, reintentando en 2s...");
+              reconnectTimeout = window.setTimeout(connectWS, 2000);
+          };
+      };
+
+      connectWS();
+
+      return () => {
+          clearTimeout(reconnectTimeout);
+          if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+      };
+  }, []);
+
+
 
   // --------------------------------------------------------------------
   // ✏️ Dibujar ruta en tiempo real

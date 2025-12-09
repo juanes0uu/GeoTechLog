@@ -37,30 +37,55 @@ export default function MapaAdmin() {
         return () => map.remove();
     }, []);
 
-    /* 🔌 WebSocket ADMIN */
+   /* 🔌 WebSocket ADMIN */
     useEffect(() => {
-        const ws = new WebSocket("ws://localhost:8080/ws");
+        let ws: WebSocket | null = null;
+        let reconnectTimeout: number;
 
-        ws.onopen = () => {
-        console.log("🧑‍💼 Admin conectado al WS");
-        ws.send(JSON.stringify({ type: "register", role: "admin" }));
+        const connectWS = () => {
+            ws = new WebSocket("ws://localhost:8080/ws");
+
+            ws.onopen = () => {
+                console.log("🧑‍💼 Admin conectado al WS");
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "register", role: "admin" }));
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "update") {
+                        const { userId, position } = data;
+                        setUsuarios((prev) => ({
+                            ...prev,
+                            [userId]: [...(prev[userId] || []), [position.lat, position.lng]],
+                        }));
+                    }
+                } catch (err) {
+                    // Ignorar errores de parseo para no ensuciar consola
+                }
+            };
+
+            ws.onerror = () => {
+                // Evitamos mostrar error feo en consola
+            };
+
+            ws.onclose = () => {
+                console.log("⚠️ WS admin desconectado, reintentando en 2s...");
+                reconnectTimeout = window.setTimeout(connectWS, 2000);
+            };
         };
 
-        ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+        connectWS();
 
-        if (data.type === "update") {
-            const { userId, position } = data;
-
-            setUsuarios((prev) => ({
-            ...prev,
-            [userId]: [...(prev[userId] || []), [position.lat, position.lng]],
-            }));
-        }
+        return () => {
+            clearTimeout(reconnectTimeout);
+            if (ws && ws.readyState === WebSocket.OPEN) ws.close();
         };
-
-        return () => ws.close();
     }, []);
+
+
 
     /* 🧭 Dibujar en el mapa */
     useEffect(() => {
