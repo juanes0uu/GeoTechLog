@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+// src/components/MapaAdmin.tsx - MODIFICADO
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -9,11 +10,18 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 type VisitorInfo = {
   name: string;
   email: string;
-  dbUserId?: string; // 👈 NUEVO: ID real de la BD
+  dbUserId?: string;
   positions: [number, number][];
   lastUpdate: Date;
   active: boolean;
 };
+
+interface MapaAdminProps {
+  visitors: Record<string, VisitorInfo>;
+  setVisitors: React.Dispatch<React.SetStateAction<Record<string, VisitorInfo>>>;
+  usuarioSeleccionado: string;
+  setUsuarioSeleccionado: React.Dispatch<React.SetStateAction<string>>;
+}
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -32,14 +40,16 @@ const visitorColors = [
   "#FF1493", // Rosa
 ];
 
-export default function MapaAdmin() {
+export default function MapaAdmin({ 
+  visitors, 
+  setVisitors, 
+  usuarioSeleccionado, 
+  setUsuarioSeleccionado 
+}: MapaAdminProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const polylineRefs = useRef<Record<string, L.Polyline>>({});
   const markerRefs = useRef<Record<string, L.Marker>>({});
-
-  const [visitors, setVisitors] = useState<Record<string, VisitorInfo>>({});
-  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<string>("");
 
   /* 🗺️ Inicializar mapa */
   useEffect(() => {
@@ -55,7 +65,7 @@ export default function MapaAdmin() {
     return () => map.remove();
   }, []);
 
-  /* 🔌 WebSocket ADMIN MEJORADO */
+  /* 🔌 WebSocket ADMIN MEJORADO - USA setVisitors DEL PROP */
   useEffect(() => {
     let ws: WebSocket | null = null;
     let reconnectTimeout: number;
@@ -79,13 +89,13 @@ export default function MapaAdmin() {
           const data = JSON.parse(event.data);
           
           if (data.type === "new_visitor") {
-            // Nuevo visitante conectado
+            // Nuevo visitante conectado - USA setVisitors DEL PROP
             setVisitors(prev => ({
               ...prev,
               [data.userId]: {
                 name: data.userName || `Visitante ${data.userId}`,
                 email: data.email || "",
-                dbUserId: data.dbUserId, // 👈 Guardar ID de BD
+                dbUserId: data.dbUserId,
                 positions: [],
                 lastUpdate: new Date(),
                 active: true
@@ -94,7 +104,7 @@ export default function MapaAdmin() {
             console.log(`🆕 Nuevo visitante: ${data.userName} (${data.userId})`);
           }
           else if (data.type === "visitor_left") {
-            // Visitante desconectado
+            // Visitante desconectado - USA setVisitors DEL PROP
             setVisitors(prev => ({
               ...prev,
               [data.userId]: {
@@ -106,8 +116,8 @@ export default function MapaAdmin() {
             console.log(`👋 Visitante desconectado: ${data.userId}`);
           }
           else if (data.type === "update") {
-            // Actualización de ubicación
-            const { userId, dbUserId, userName, position } = data; // 👈 Incluir dbUserId
+            // Actualización de ubicación - USA setVisitors DEL PROP
+            const { userId, dbUserId, userName, position } = data;
             
             setVisitors(prev => {
               const visitor = prev[userId];
@@ -118,7 +128,7 @@ export default function MapaAdmin() {
                   [userId]: {
                     name: userName || `Visitante ${userId}`,
                     email: "",
-                    dbUserId: dbUserId, // 👈 Guardar
+                    dbUserId: dbUserId,
                     positions: [[position.lat, position.lng]],
                     lastUpdate: new Date(),
                     active: true
@@ -158,7 +168,7 @@ export default function MapaAdmin() {
       clearTimeout(reconnectTimeout);
       if (ws && ws.readyState === WebSocket.OPEN) ws.close();
     };
-  }, []);
+  }, [setVisitors]); // 👈 Agrega setVisitors como dependencia
 
   /* 🧭 Dibujar en el mapa - SOLO USUARIO SELECCIONADO */
   useEffect(() => {
