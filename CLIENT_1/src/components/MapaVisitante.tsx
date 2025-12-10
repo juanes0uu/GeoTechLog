@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../services/apiMapa";
-import { WS_URL } from "../services/ws";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -37,9 +36,11 @@ export default function MapaVisitante() {
   const [recorridoActivo, setRecorridoActivo] = useState(false);
   const [rutaActual, setRutaActual] = useState<[number, number][]>([]);
   const [mensaje, setMensaje] = useState("");
+  const [usuarioId, setUsuarioId] = useState<string>(""); // 👈 NUEVO: guardar ID del usuario
 
   const wsRef = useRef<WebSocket | null>(null);
   const markerUsuarioRef = useRef<L.Marker | null>(null);
+  const indiceRef = useRef(0); // índice del punto actual en la ruta
 
   // --------------------------------------------------------------------
   // 🗺 Inicializar Mapa
@@ -62,36 +63,110 @@ export default function MapaVisitante() {
 
   // --------------------------------------------------------------------
   // 🔌 Conectar WebSocket y recibir ubicaciones EN TIEMPO REAL
-  // --------------------------------------------------------------------
   useEffect(() => {
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: number;
 
-    ws.onopen = () => {
-      console.log("✅ Visitante conectado al WS");
+    const connectWS = () => {
+      ws = new WebSocket("ws://localhost:8080/ws");
+      wsRef.current = ws;
 
-      // 🔐 REGISTRO OBLIGATORIO
-      ws.send(
-        JSON.stringify({
-          type: "register",
-          role: "visitante",
-          userId: "visitante-1", // puede ser dinámico después
-        })
-      );
+      ws.onopen = () => {
+        console.log("✅ Visitante conectado al WS");
+        
+        // 👇 OBTENER DATOS REALES DEL USUARIO LOGUEADO
+        const usuarioStorage = localStorage.getItem("usuario");
+        let usuario = { 
+          id: `visitante-${Date.now()}`, 
+          nombre: "Visitante", 
+          email: "",
+          userId: "" // Para el ID real de la BD
+        };
+        
+        if (usuarioStorage) {
+          try {
+            const parsed = JSON.parse(usuarioStorage);
+            usuario = {
+              id: `visitante-${parsed.id || Date.now()}`, // ID único para WS
+              nombre: parsed.nombre || "Visitante",
+              email: parsed.email || "",
+              userId: parsed.id?.toString() || "" // ID real de la BD
+            };
+          } catch (e) {
+            console.error("Error parsing usuario:", e);
+          }
+        }
+
+        // Guardar el ID del usuario para usarlo en las funciones
+        setUsuarioId(usuario.id);
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: "register",
+            role: "visitante",
+            userId: usuario.id, // ID único para el WebSocket
+            dbUserId: usuario.userId, // ID de la base de datos
+            userName: usuario.nombre, // Nombre real
+            email: usuario.email // Email real
+          }));
+        }
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Mensaje recibido del servidor:", data);
+        } catch (error) {
+          // Silenciar errores de parseo
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("❌ Error en WebSocket:", error);
+        if (ws && ws.readyState !== WebSocket.CLOSING && ws.readyState !== WebSocket.CLOSED) {
+          ws.close();
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("⚠️ WS visitante desconectado, reintentando en 2s...");
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+        reconnectTimeout = window.setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            console.log("🔄 Intentando reconexión...");
+            connectWS();
+          }
+        }, 2000);
+      };
     };
 
-    ws.onerror = (err) => {
-      console.log("❌ WS visitante error", err);
+    if (document.visibilityState === 'visible') {
+      connectWS();
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && (!ws || ws.readyState === WebSocket.CLOSED)) {
+        console.log("📱 Pestaña visible, reconectando...");
+        connectWS();
+      }
     };
 
-    ws.onclose = () => {
-      console.log("🔴 WS desconectado (visitante)");
-    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      ws.close();
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+          ws.close();
+        }
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      wsRef.current = null;
     };
-  }, []); // ✅ SIN DEPENDENCIAS
+  }, []);
 
   // --------------------------------------------------------------------
   // ✏️ Dibujar ruta en tiempo real
@@ -110,7 +185,6 @@ export default function MapaVisitante() {
       map.fitBounds(polylineRef.current.getBounds());
     }
   }, [rutaActual]);
-
 
   // --------------------------------------------------------------------
   // 📌 Cargar lugares de la BD
@@ -168,19 +242,15 @@ export default function MapaVisitante() {
 
       setPuntos(coords);
 
-      // Dibujar polilínea directamente
       const map = mapRef.current;
       if (!map) return;
 
-      // Eliminar polilínea anterior
       if (polylineRef.current) {
         map.removeLayer(polylineRef.current);
       }
 
-      // Crear nueva polilínea
       polylineRef.current = L.polyline(coords, { color: "blue" }).addTo(map);
 
-      // Centrar mapa en primer punto
       if (coords.length > 0) {
         map.fitBounds(polylineRef.current.getBounds());
       }
@@ -189,7 +259,6 @@ export default function MapaVisitante() {
       console.error("Error cargando ruta:", err);
     }
   };
-
 
   // --------------------------------------------------------------------
   // 🧹 Limpiar ruta
@@ -206,22 +275,15 @@ export default function MapaVisitante() {
   };
 
   // --------------------------------------------------------------------
-  // 🆕 Enviar ubicación RANDOM
+  // 🆕 Enviar ubicación RANDOM - CORREGIDO
   // --------------------------------------------------------------------
-// --------------------------------------------------------------------
-// 🆕 Enviar ubicación RANDOM
-// --------------------------------------------------------------------
-  const indiceRef = useRef(0); // índice del punto actual en la ruta
-
   const enviarRandom = () => {
     if (!rutaActual || rutaActual.length === 0 || !wsRef.current) return;
 
-    // Tomamos el punto actual
     const index = indiceRef.current;
     const [latBase, lngBase] = rutaActual[index];
 
-    // Desviación pequeña aleatoria
-    const desviacionLat = (Math.random() - 0.5) * 0.00005; // ±5m
+    const desviacionLat = (Math.random() - 0.5) * 0.00005;
     const desviacionLng = (Math.random() - 0.5) * 0.00005;
 
     const lat = latBase + desviacionLat;
@@ -234,12 +296,12 @@ export default function MapaVisitante() {
       setMensaje("");
     }
 
-    // Enviar al WS
-    if (wsRef.current.readyState === WebSocket.OPEN) {
+    // Enviar al WS - USAR EL ID REAL DEL USUARIO
+    if (wsRef.current.readyState === WebSocket.OPEN && usuarioId) {
       wsRef.current.send(
         JSON.stringify({
           type: "location",
-          userId: "visitante",
+          userId: usuarioId, // 👈 ID REAL del usuario
           position: { lat, lng },
         })
       );
@@ -264,16 +326,8 @@ export default function MapaVisitante() {
     indiceRef.current = (index + 1) % rutaActual.length;
   };
 
-
-
-
-
-    
-
-
-
   // --------------------------------------------------------------------
-  // 🆕 Enviar ubicación REAL
+  // 🆕 Enviar ubicación REAL - CORREGIDO
   // --------------------------------------------------------------------
   const enviarUbicacionReal = () => {
     if (!navigator.geolocation) {
@@ -295,13 +349,16 @@ export default function MapaVisitante() {
         const map = mapRef.current;
         if (!map) return;
 
-        wsRef.current?.send(
-          JSON.stringify({
-            type: "location",
-            userId: "visitante",
-            position: { lat, lng },
-          })
-        );
+        // Enviar con el ID REAL del usuario
+        if (wsRef.current?.readyState === WebSocket.OPEN && usuarioId) {
+          wsRef.current.send(
+            JSON.stringify({
+              type: "location",
+              userId: usuarioId, // 👈 ID REAL del usuario
+              position: { lat, lng },
+            })
+          );
+        }
 
         if (markerUsuarioRef.current) {
           markerUsuarioRef.current.setLatLng([lat, lng]);
@@ -358,16 +415,13 @@ export default function MapaVisitante() {
   };
 
   const estaEnRuta = (lat: number, lng: number) => {
-  if (!rutaActual || rutaActual.length === 0) return true;
+    if (!rutaActual || rutaActual.length === 0) return true;
 
-  const umbral = 0.000017; // ~3 metros
-  return rutaActual.some(([rLat, rLng]) =>
-    Math.sqrt((lat - rLat) ** 2 + (lng - rLng) ** 2) <= umbral
-  );
-};
-
-//d = √((lat_user – lat_ruta)² + (lng_user – lng_ruta)²)
-
+    const umbral = 0.000017; // ~3 metros
+    return rutaActual.some(([rLat, rLng]) =>
+      Math.sqrt((lat - rLat) ** 2 + (lng - rLng) ** 2) <= umbral
+    );
+  };
 
   // --------------------------------------------------------------------
   return (

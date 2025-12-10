@@ -35,3 +35,30 @@ export interface Ubicacion {
     Longitud: number;
     FechaHora?: string;
 }
+
+
+// types.ts
+export type UserRole = 'admin' | 'visitante';
+
+export interface User {
+  id: string | number;
+  nombre: string;
+  email: string;
+  rol: UserRole;
+}
+
+export interface Position {
+  lat: number;
+  lng: number;
+  timestamp: Date;
+}
+
+export interface VisitorSession {
+  userId: string;
+  userName: string;
+  email: string;
+  positions: Position[];
+  connectedAt: Date;
+  lastUpdate: Date;
+  active: boolean;
+}
